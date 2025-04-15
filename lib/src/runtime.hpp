@@ -48,8 +48,8 @@ class Runtime {
 		auto const operands = pop_operands<2>();
 		auto const args = BinOpArgs{
 			.op = op,
-			.a = operands[0],
-			.b = operands[1],
+			.a = operands[1],
+			.b = operands[0],
 		};
 		auto result = double{};
 		m_eval->evaluate(args, result);
