@@ -3,7 +3,7 @@ project(shunt-lab)
 add_executable(${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-  shunt::warnings
+  klib::klib-warnings
   shunt::lib
 )
 

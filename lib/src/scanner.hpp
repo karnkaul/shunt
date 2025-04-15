@@ -120,7 +120,7 @@ class Scanner {
 	}
 
 	[[nodiscard]] auto scan_operator() -> Token {
-		for (auto const op : enumerate<BinaryOp>()) {
+		for (auto const op : bin_ops_v) {
 			auto const symbol = bin_op_symbol_v.at(op);
 			if (m_remain.starts_with(symbol)) {
 				auto ret = Token{.term = op, .lexeme = m_remain.substr(0, symbol.size())};

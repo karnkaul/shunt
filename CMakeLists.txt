@@ -7,14 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_DEBUG_POSTFIX "-d")
 
-add_library(shunt-warnings INTERFACE)
-add_library(shunt::warnings ALIAS shunt-warnings)
+set(shunt_is_top_level ${PROJECT_IS_TOP_LEVEL})
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-  target_compile_options(shunt-warnings INTERFACE
-    -Wall -Wextra -Wpedantic -Wconversion -Werror=return-type
-  )
-endif()
-
+add_subdirectory(ext)
 add_subdirectory(lib)
 add_subdirectory(lab)

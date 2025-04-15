@@ -52,6 +52,6 @@ class Eval {
 
   private:
 	std::unordered_map<Call, CallFunc> m_call_funcs{};
-	EnumArray<BinaryOp, BinOpFunc> m_bin_op_funcs{};
+	klib::EnumArray<BinaryOp, BinOpFunc> m_bin_op_funcs{};
 };
 } // namespace shunt

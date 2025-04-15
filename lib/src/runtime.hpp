@@ -1,8 +1,8 @@
 #pragma once
 #include <eval.hpp>
+#include <klib/visitor.hpp>
 #include <shunt/result.hpp>
 #include <shunt/token.hpp>
-#include <shunt/visitor.hpp>
 #include <cassert>
 #include <cmath>
 #include <span>
@@ -29,7 +29,7 @@ class Runtime {
 
   private:
 	void eval_current() {
-		auto const visitor = Visitor{
+		auto const visitor = klib::Visitor{
 			[this](BinaryOp const op) { apply_bin_op(op); },
 			[this](Operand const op) { m_operands.push_back(op); },
 			[this](Call const call) { apply_call(call); },

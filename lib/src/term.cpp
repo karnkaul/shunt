@@ -1,5 +1,4 @@
 #include <shunt/term.hpp>
-#include <shunt/visitor.hpp>
 #include <format>
 
 namespace shunt {

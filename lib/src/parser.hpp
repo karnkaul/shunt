@@ -1,7 +1,7 @@
 #pragma once
+#include <klib/visitor.hpp>
 #include <shunt/result.hpp>
 #include <shunt/token.hpp>
-#include <shunt/visitor.hpp>
 #include <cassert>
 #include <span>
 #include <vector>
@@ -23,7 +23,7 @@ class Parser {
 				auto const token = m_stack.back();
 				m_stack.pop_back();
 
-				auto const visitor = Visitor{
+				auto const visitor = klib::Visitor{
 					[token](Paren const /*p*/) {
 						throw SyntaxError{
 							.description = "Mismatched opening parenthesis",
@@ -43,7 +43,7 @@ class Parser {
 
   private:
 	static auto cast(Term const& term) -> RpnTerm {
-		auto const visitor = Visitor{
+		auto const visitor = klib::Visitor{
 			[](Paren const /*p*/) -> RpnTerm { throw SyntaxError{.description = "ICE"}; },
 			[](auto const& t) { return RpnTerm{t}; },
 		};
@@ -59,7 +59,7 @@ class Parser {
 	}
 
 	void parse_current() {
-		auto const visitor = Visitor{
+		auto const visitor = klib::Visitor{
 			[this](Paren const paren) {
 				switch (paren) {
 				case Paren::Left: m_stack.push_back(m_current); break;
