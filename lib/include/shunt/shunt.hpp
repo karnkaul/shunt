@@ -7,7 +7,7 @@
 namespace shunt {
 [[nodiscard]] auto scan_tokens(std::string_view line) -> Result<std::vector<Token>>;
 
-[[nodiscard]] auto parse_to_rpn(std::span<Token const> tokens) -> Result<std::vector<RpnToken>>;
+[[nodiscard]] auto parse_to_rpn(std::span<Token const> tokens) -> Result<std::vector<Token>>;
 
-[[nodiscard]] auto evaluate(std::span<RpnToken const> rpn_stack) -> Result<double>;
+[[nodiscard]] auto evaluate(std::span<Token const> rpn_stack) -> Result<double>;
 } // namespace shunt

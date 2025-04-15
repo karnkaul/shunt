@@ -13,7 +13,7 @@ class Runtime {
   public:
 	explicit Runtime(Eval const& eval) : m_eval(&eval) {}
 
-	[[nodiscard]] auto evaluate(std::span<RpnToken const> rpn_stack) -> Result<Operand> {
+	[[nodiscard]] auto evaluate(std::span<Token const> rpn_stack) -> Result<Operand> {
 		m_operands.clear();
 		m_current = {};
 
@@ -30,11 +30,18 @@ class Runtime {
   private:
 	void eval_current() {
 		auto const visitor = klib::Visitor{
+			[this](Paren const /*paren*/) {
+				throw SyntaxError{
+					.description = "Unexpected parenthesis",
+					.lexeme = m_current.lexeme,
+					.loc = m_current.loc,
+				};
+			},
 			[this](BinaryOp const op) { apply_bin_op(op); },
 			[this](Operand const op) { m_operands.push_back(op); },
 			[this](Call const call) { apply_call(call); },
 		};
-		std::visit(visitor, m_current.term);
+		std::visit(visitor, m_current.type);
 	}
 
 	void apply_bin_op(BinaryOp const op) {
@@ -98,6 +105,6 @@ class Runtime {
 
 	Eval const* m_eval{};
 	std::vector<Operand> m_operands{};
-	RpnToken m_current{};
+	Token m_current{};
 };
 } // namespace shunt

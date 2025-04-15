@@ -74,7 +74,7 @@ class Scanner {
 	[[nodiscard]] auto scan_paren() -> Token {
 		auto const ch = m_remain.front();
 		auto const ret = Token{
-			.term = (ch == '(') ? Paren::Left : Paren::Right,
+			.type = (ch == '(') ? Paren::Left : Paren::Right,
 			.lexeme = m_remain.substr(0, 1),
 			.loc = {.start = m_index, .length = 1},
 		};
@@ -94,7 +94,7 @@ class Scanner {
 		auto const start = m_index;
 		m_index += last;
 		return Token{
-			.term = func_name,
+			.type = func_name,
 			.lexeme = func_name,
 			.loc = {.start = start, .length = last},
 		};
@@ -112,7 +112,7 @@ class Scanner {
 			};
 		}
 		auto const distance = std::size_t(std::distance(m_remain.data(), ptr));
-		auto ret = Token{.term = value, .lexeme = m_remain.substr(0, distance)};
+		auto ret = Token{.type = value, .lexeme = m_remain.substr(0, distance)};
 		ret.loc = {.start = m_index, .length = distance};
 		m_remain = m_remain.substr(distance);
 		m_index += distance;
@@ -123,7 +123,7 @@ class Scanner {
 		for (auto const op : bin_ops_v) {
 			auto const symbol = bin_op_symbol_v.at(op);
 			if (m_remain.starts_with(symbol)) {
-				auto ret = Token{.term = op, .lexeme = m_remain.substr(0, symbol.size())};
+				auto ret = Token{.type = op, .lexeme = m_remain.substr(0, symbol.size())};
 				ret.loc = {.start = m_index, .length = symbol.size()};
 				m_remain = m_remain.substr(symbol.size());
 				m_index += symbol.size();

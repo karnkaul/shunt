@@ -36,10 +36,4 @@ enum class Paren : std::int8_t {
 	Left,
 	Right,
 };
-
-using Term = std::variant<Paren, BinaryOp, Call, Operand>;
-using RpnTerm = std::variant<BinaryOp, Call, Operand>;
-
-[[nodiscard]] auto to_string(Term const& term) -> std::string;
-[[nodiscard]] auto to_string(RpnTerm const& term) -> std::string;
 } // namespace shunt

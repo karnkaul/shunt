@@ -1,15 +1,16 @@
 #pragma once
 #include <shunt/loc.hpp>
-#include <shunt/term.hpp>
+#include <shunt/types.hpp>
+#include <variant>
 
 namespace shunt {
-template <typename TermT>
-struct BasicToken {
-	TermT term{};
+struct Token {
+	using Type = std::variant<Paren, BinaryOp, Call, Operand>;
+
+	Type type{};
 	std::string_view lexeme{};
 	Loc loc{};
 };
 
-using Token = BasicToken<Term>;
-using RpnToken = BasicToken<RpnTerm>;
+[[nodiscard]] auto to_string(Token::Type const& token_type) -> std::string;
 } // namespace shunt

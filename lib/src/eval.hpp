@@ -1,5 +1,5 @@
 #pragma once
-#include <shunt/term.hpp>
+#include <shunt/types.hpp>
 #include <cassert>
 #include <cmath>
 #include <unordered_map>

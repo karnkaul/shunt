@@ -1,6 +1,5 @@
 #pragma once
 #include <shunt/loc.hpp>
-#include <shunt/term.hpp>
 #include <string>
 
 namespace shunt {
