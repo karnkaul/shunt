@@ -19,24 +19,7 @@ class Parser {
 				m_current = token;
 				parse_current();
 			}
-			while (!m_stack.empty()) {
-				auto const token = m_stack.back();
-				m_stack.pop_back();
-
-				if (std::holds_alternative<Paren>(token.type)) {
-					throw SyntaxError{
-						.description = "Mismatched opening parenthesis",
-						.lexeme = token.lexeme,
-						.loc = token.loc,
-					};
-				}
-				if (std::holds_alternative<BinaryOp>(token.type) ||
-					std::holds_alternative<Call>(token.type)) {
-					m_output.push_back(token);
-				} else {
-					throw SyntaxError{.description = "ICE"};
-				}
-			}
+			drain_stack();
 		} catch (SyntaxError const& error) { return std::unexpected(error); }
 		return std::move(m_output);
 	}
@@ -50,18 +33,37 @@ class Parser {
 				case Paren::Right: on_paren_r(); break;
 				}
 			},
-			[this](BinaryOp const /*op*/) { apply_bin_op(); },
-			[this](Call const /*func*/) { m_stack.push_back(m_current); },
-			[this](Operand const /*op*/) { m_output.push_back(m_current); },
+			[this](BinaryOp) { apply_bin_op(); },
+			[this](Call) { m_stack.push_back(m_current); },
+			[this](Operand) { m_output.push_back(m_current); },
 		};
 		std::visit(visitor, m_current.type);
+	}
+
+	void drain_stack() {
+		while (!m_stack.empty()) {
+			auto const token = m_stack.back();
+			m_stack.pop_back();
+
+			if (token.is<BinaryOp>() || token.is<Call>()) {
+				m_output.push_back(token);
+				continue;
+			}
+
+			throw SyntaxError{
+				.description =
+					token.is<Paren>() ? "Mismatched opening parenthesis" : "Unexpected token",
+				.lexeme = token.lexeme,
+				.loc = token.loc,
+			};
+		}
 	}
 
 	void on_paren_r() {
 		while (!m_stack.empty()) {
 			auto const token = m_stack.back();
 			m_stack.pop_back();
-			if (auto const* paren = std::get_if<Paren>(&token.type);
+			if (auto const* paren = token.get_if<Paren>();
 				paren != nullptr && *paren == Paren::Left) {
 				pop_if_func();
 				return;
@@ -79,22 +81,20 @@ class Parser {
 	void pop_if_func() {
 		if (m_stack.empty()) { return; }
 		auto const token = m_stack.back();
-		if (!std::holds_alternative<Call>(token.type)) { return; }
+		if (!token.is<Call>()) { return; }
 		m_stack.pop_back();
 		m_output.push_back(token);
 	}
 
 	void apply_bin_op() {
-		auto const op = std::get<BinaryOp>(m_current.type);
-		auto const p_current = bin_op_precedence_v.at(op);
+		auto const p_current = bin_op_precedence_v.at(m_current.get<BinaryOp>());
 		while (!m_stack.empty()) {
 			auto const token = m_stack.back();
-			if (auto const* paren = std::get_if<Paren>(&token.type);
+			if (auto const* paren = token.get_if<Paren>();
 				paren != nullptr && *paren == Paren::Left) {
 				break;
 			}
-			auto const op_stack = std::get<BinaryOp>(token.type);
-			auto const p_stack = bin_op_precedence_v.at(op_stack);
+			auto const p_stack = bin_op_precedence_v.at(token.get<BinaryOp>());
 			if (p_current > p_stack) { break; }
 			m_output.push_back(token);
 			m_stack.pop_back();
