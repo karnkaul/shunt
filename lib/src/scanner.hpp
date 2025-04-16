@@ -39,10 +39,6 @@ class Scanner {
 		return c == '(' || c == ')';
 	}
 
-	[[nodiscard]] static constexpr auto is_sign(char const c) -> bool {
-		return c == '-' || c == '+';
-	}
-
 	[[nodiscard]] auto next(Token& out) -> bool {
 		trim_front();
 		if (m_remain.empty()) { return false; }
@@ -55,22 +51,10 @@ class Scanner {
 	[[nodiscard]] auto next_token() -> Token {
 		assert(!m_remain.empty());
 		char const ch = m_remain.front();
-		if (is_sign(ch)) {
-			auto ret = Token{};
-			if (try_scan_signed(ret)) { return ret; }
-		}
 		if (is_paren(ch)) { return scan_paren(); }
 		if (is_alpha(ch)) { return scan_function(); }
 		if (is_digit(ch)) { return scan_number(); }
 		return scan_operator();
-	}
-
-	[[nodiscard]] auto try_scan_signed(Token& out) -> bool {
-		if (m_remain.size() < 2) { return false; }
-		auto const next = m_remain.at(1);
-		if (!is_digit(next)) { return false; }
-		out = scan_number();
-		return true;
 	}
 
 	[[nodiscard]] auto scan_paren() -> Token {

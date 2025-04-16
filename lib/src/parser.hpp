@@ -98,8 +98,10 @@ class Parser {
 				paren != nullptr && *paren == Paren::Left) {
 				break;
 			}
-			auto const p_stack = token.get<Binop>().precedence();
-			if (p_current > p_stack) { break; }
+			if (auto const* bin_op = token.get_if<Binop>()) {
+				auto const p_stack = bin_op->precedence();
+				if (p_current > p_stack) { break; }
+			}
 			m_output.push_back(token);
 			m_stack.pop_back();
 		}
