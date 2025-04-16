@@ -9,7 +9,10 @@
 namespace shunt {
 class Parser {
   public:
-	auto parse(std::span<Token const> tokens) -> Result<std::vector<Token>> {
+	explicit Parser(std::vector<Token>& out, std::vector<Token>& stack)
+		: m_stack(stack), m_output(out) {}
+
+	auto parse(std::span<Token const> tokens) -> Result<void> {
 		m_stack.clear();
 		m_output.clear();
 		m_current = {};
@@ -21,7 +24,7 @@ class Parser {
 			}
 			drain_stack();
 		} catch (SyntaxError const& error) { return std::unexpected(error); }
-		return std::move(m_output);
+		return {};
 	}
 
   private:
@@ -104,7 +107,7 @@ class Parser {
 	}
 
 	Token m_current{};
-	std::vector<Token> m_stack{};
-	std::vector<Token> m_output{};
+	std::vector<Token>& m_stack;
+	std::vector<Token>& m_output;
 };
 } // namespace shunt

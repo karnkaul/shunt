@@ -11,7 +11,8 @@
 namespace shunt {
 class Evaluator {
   public:
-	explicit Evaluator(CallTable const& call_table) : m_call_table(&call_table) {}
+	explicit Evaluator(CallTable const& call_table, std::vector<Operand>& operands)
+		: m_call_table(call_table), m_operands(operands) {}
 
 	[[nodiscard]] auto evaluate(std::span<Token const> rpn_stack) -> Result<Operand> {
 		m_operands.clear();
@@ -52,7 +53,7 @@ class Evaluator {
 	void apply_call(Call const call) {
 		auto const token = m_current;
 		auto const operands = pop_operands<1>();
-		auto* func = find_func(*m_call_table, call);
+		auto* func = find_func(m_call_table, call);
 		if (func == nullptr) {
 			throw SyntaxError{
 				.description = "Unrecognized call",
@@ -80,8 +81,8 @@ class Evaluator {
 		return ret;
 	}
 
-	CallTable const* m_call_table{};
-	std::vector<Operand> m_operands{};
+	CallTable const& m_call_table;
+	std::vector<Operand>& m_operands;
 	Token m_current{};
 };
 } // namespace shunt

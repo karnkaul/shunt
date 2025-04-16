@@ -8,16 +8,18 @@
 namespace shunt {
 class Scanner {
   public:
-	[[nodiscard]] auto scan(std::string_view line) -> Result<std::vector<Token>> {
+	explicit Scanner(std::vector<Token>& out) : m_out(out) {}
+
+	[[nodiscard]] auto scan(std::string_view line) -> Result<void> {
+		m_out.clear();
 		m_remain = line;
 		m_index = 0;
 
-		auto ret = std::vector<Token>{};
 		try {
-			for (auto token = Token{}; next(token);) { ret.push_back(token); }
+			for (auto token = Token{}; next(token);) { m_out.push_back(token); }
 		} catch (SyntaxError const& error) { return std::unexpected(error); }
 		m_remain = {};
-		return ret;
+		return {};
 	}
 
   private:
@@ -144,6 +146,8 @@ class Scanner {
 			++m_index;
 		}
 	}
+
+	std::vector<Token>& m_out;
 
 	std::string_view m_remain{};
 	std::size_t m_index{};
