@@ -3,6 +3,7 @@
 #include <shunt/result.hpp>
 #include <shunt/token.hpp>
 #include <cassert>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -21,6 +22,7 @@ class Parser {
 			for (auto const token : tokens) {
 				m_current = token;
 				parse_current();
+				m_previous = m_current;
 			}
 			drain_stack();
 		} catch (SyntaxError const& error) { return std::unexpected(error); }
@@ -29,6 +31,20 @@ class Parser {
 
   private:
 	void parse_current() {
+		if (m_negate_operand) {
+			auto const* operand = m_current.get_if<Operand>();
+			if (operand == nullptr) {
+				throw SyntaxError{
+					.description = "Expected operand",
+					.lexeme = m_current.lexeme,
+					.loc = m_current.loc,
+				};
+			}
+			m_current.type = -*operand;
+			m_output.push_back(m_current);
+			return;
+		}
+
 		auto const visitor = klib::Visitor{
 			[this](Paren const paren) {
 				switch (paren) {
@@ -37,7 +53,7 @@ class Parser {
 				default: throw SyntaxError{.description = "ICE"};
 				}
 			},
-			[this](Operator) { apply_operator(); },
+			[this](Operator const op) { apply_operator(op); },
 			[this](Call) { m_stack.push_back(m_current); },
 			[this](Operand) { m_output.push_back(m_current); },
 		};
@@ -90,8 +106,13 @@ class Parser {
 		m_output.push_back(token);
 	}
 
-	void apply_operator() {
-		auto const p_current = m_current.get<Operator>().precedence();
+	void apply_operator(Operator const op) {
+		if ((!m_previous || !m_previous->is<Operand>()) && op.type() == Operator::Type::Minus) {
+			m_negate_operand = true;
+			return;
+		}
+
+		auto const p_current = op.precedence();
 		while (!m_stack.empty()) {
 			auto const token = m_stack.back();
 			if (auto const* paren = token.get_if<Paren>();
@@ -108,8 +129,11 @@ class Parser {
 		m_stack.push_back(m_current);
 	}
 
-	Token m_current{};
 	std::vector<Token>& m_stack;
 	std::vector<Token>& m_output;
+
+	Token m_current{};
+	std::optional<Token> m_previous{};
+	bool m_negate_operand{};
 };
 } // namespace shunt
