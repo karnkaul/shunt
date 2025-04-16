@@ -5,7 +5,7 @@
 auto shunt::to_string(Token::Type const& token_type) -> std::string {
 	auto const visitor = klib::Visitor{
 		[](Paren const p) -> std::string { return p == Paren::Left ? "(" : ")"; },
-		[](Binop const& op) { return std::string{op.symbol()}; },
+		[](Operator const& op) { return std::string{op.symbol()}; },
 		[](Call const func) { return std::string{func}; },
 		[](Operand const op) { return std::format("{}", op); },
 	};

@@ -38,14 +38,14 @@ class Evaluator {
 					.loc = m_current.loc,
 				};
 			},
-			[this](Binop const op) { apply_bin_op(op); },
+			[this](Operator const op) { apply_operator(op); },
 			[this](Operand const op) { m_operands.push_back(op); },
 			[this](Call const call) { apply_call(call); },
 		};
 		std::visit(visitor, m_current.type);
 	}
 
-	void apply_bin_op(Binop const op) {
+	void apply_operator(Operator const op) {
 		auto const operands = pop_operands<2>();
 		m_operands.push_back(op.evaluate(operands[1], operands[0]));
 	}

@@ -1,6 +1,6 @@
 project(shunt-lib)
 
-message(STATUS "[shunt-lib]")
+message(STATUS "[${PROJECT_NAME}]")
 
 add_library(${PROJECT_NAME})
 add_library(shunt::lib ALIAS ${PROJECT_NAME})

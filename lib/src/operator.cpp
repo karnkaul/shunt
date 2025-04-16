@@ -1,8 +1,8 @@
-#include <shunt/binop.hpp>
+#include <shunt/operator.hpp>
 #include <cmath>
 
 namespace shunt {
-auto Binop::evaluate(double const a, double const b) const -> double {
+auto Operator::evaluate(double const a, double const b) const -> double {
 	switch (type()) {
 	case Type::Plus: return a + b;
 	case Type::Minus: return a - b;

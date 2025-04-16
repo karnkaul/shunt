@@ -1,7 +1,7 @@
 #pragma once
-#include <shunt/binop.hpp>
 #include <shunt/call.hpp>
 #include <shunt/loc.hpp>
+#include <shunt/operator.hpp>
 #include <variant>
 
 namespace shunt {
@@ -13,7 +13,7 @@ enum class Paren : std::int8_t {
 };
 
 struct Token {
-	using Type = std::variant<Paren, Binop, Call, Operand>;
+	using Type = std::variant<Paren, Operator, Call, Operand>;
 
 	template <typename T>
 	[[nodiscard]] constexpr auto is() const -> bool {

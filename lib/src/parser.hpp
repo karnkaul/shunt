@@ -37,7 +37,7 @@ class Parser {
 				default: throw SyntaxError{.description = "ICE"};
 				}
 			},
-			[this](Binop) { apply_bin_op(); },
+			[this](Operator) { apply_operator(); },
 			[this](Call) { m_stack.push_back(m_current); },
 			[this](Operand) { m_output.push_back(m_current); },
 		};
@@ -49,7 +49,7 @@ class Parser {
 			auto const token = m_stack.back();
 			m_stack.pop_back();
 
-			if (token.is<Binop>() || token.is<Call>()) {
+			if (token.is<Operator>() || token.is<Call>()) {
 				m_output.push_back(token);
 				continue;
 			}
@@ -90,15 +90,15 @@ class Parser {
 		m_output.push_back(token);
 	}
 
-	void apply_bin_op() {
-		auto const p_current = m_current.get<Binop>().precedence();
+	void apply_operator() {
+		auto const p_current = m_current.get<Operator>().precedence();
 		while (!m_stack.empty()) {
 			auto const token = m_stack.back();
 			if (auto const* paren = token.get_if<Paren>();
 				paren != nullptr && *paren == Paren::Left) {
 				break;
 			}
-			if (auto const* bin_op = token.get_if<Binop>()) {
+			if (auto const* bin_op = token.get_if<Operator>()) {
 				auto const p_stack = bin_op->precedence();
 				if (p_current > p_stack) { break; }
 			}

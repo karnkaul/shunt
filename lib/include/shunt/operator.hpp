@@ -5,7 +5,7 @@
 #include <string_view>
 
 namespace shunt {
-enum class BinopType : std::int8_t {
+enum class OperatorType : std::int8_t {
 	Plus,
 	Minus,
 	Star,
@@ -14,13 +14,13 @@ enum class BinopType : std::int8_t {
 	COUNT_,
 };
 
-class Binop {
+class Operator {
   public:
-	using Type = BinopType;
+	using Type = OperatorType;
 
 	static constexpr auto count_v = std::size_t(Type::COUNT_);
 
-	explicit(false) constexpr Binop(Type type) : m_type(type) {
+	explicit(false) constexpr Operator(Type type) : m_type(type) {
 		assert(m_type >= Type{} && m_type < Type::COUNT_);
 	}
 
@@ -30,7 +30,7 @@ class Binop {
 
 	[[nodiscard]] auto evaluate(double a, double b) const -> double;
 
-	auto operator==(Binop const&) const -> bool = default;
+	auto operator==(Operator const&) const -> bool = default;
 
 	constexpr operator Type() const { return type(); }
 
@@ -54,10 +54,11 @@ class Binop {
 
 namespace detail {
 template <std::size_t... I>
-constexpr auto make_binops(std::index_sequence<I...> /*s*/) {
-	return std::array<Binop, sizeof...(I)>{Binop{Binop::Type(I)}...};
+constexpr auto make_operators(std::index_sequence<I...> /*s*/) {
+	return std::array<Operator, sizeof...(I)>{Operator{Operator::Type(I)}...};
 }
 } // namespace detail
 
-inline constexpr auto binops_v = detail::make_binops(std::make_index_sequence<Binop::count_v>());
+inline constexpr auto operators_v =
+	detail::make_operators(std::make_index_sequence<Operator::count_v>());
 } // namespace shunt
