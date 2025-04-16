@@ -31,9 +31,10 @@ class Parser {
 				switch (paren) {
 				case Paren::Left: m_stack.push_back(m_current); break;
 				case Paren::Right: on_paren_r(); break;
+				default: throw SyntaxError{.description = "ICE"};
 				}
 			},
-			[this](BinaryOp) { apply_bin_op(); },
+			[this](Binop) { apply_bin_op(); },
 			[this](Call) { m_stack.push_back(m_current); },
 			[this](Operand) { m_output.push_back(m_current); },
 		};
@@ -45,7 +46,7 @@ class Parser {
 			auto const token = m_stack.back();
 			m_stack.pop_back();
 
-			if (token.is<BinaryOp>() || token.is<Call>()) {
+			if (token.is<Binop>() || token.is<Call>()) {
 				m_output.push_back(token);
 				continue;
 			}
@@ -87,14 +88,14 @@ class Parser {
 	}
 
 	void apply_bin_op() {
-		auto const p_current = bin_op_precedence_v.at(m_current.get<BinaryOp>());
+		auto const p_current = m_current.get<Binop>().precedence();
 		while (!m_stack.empty()) {
 			auto const token = m_stack.back();
 			if (auto const* paren = token.get_if<Paren>();
 				paren != nullptr && *paren == Paren::Left) {
 				break;
 			}
-			auto const p_stack = bin_op_precedence_v.at(token.get<BinaryOp>());
+			auto const p_stack = token.get<Binop>().precedence();
 			if (p_current > p_stack) { break; }
 			m_output.push_back(token);
 			m_stack.pop_back();

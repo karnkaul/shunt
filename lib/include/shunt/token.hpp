@@ -1,11 +1,19 @@
 #pragma once
+#include <shunt/binop.hpp>
+#include <shunt/call.hpp>
 #include <shunt/loc.hpp>
-#include <shunt/types.hpp>
 #include <variant>
 
 namespace shunt {
+using Operand = double;
+
+enum class Paren : std::int8_t {
+	Left,
+	Right,
+};
+
 struct Token {
-	using Type = std::variant<Paren, BinaryOp, Call, Operand>;
+	using Type = std::variant<Paren, Binop, Call, Operand>;
 
 	template <typename T>
 	[[nodiscard]] constexpr auto is() const -> bool {

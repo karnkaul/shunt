@@ -1,0 +1,4 @@
+- [x] use passed args in visitors
+- [ ] BinaryOp: class? 
+- [ ] all structs in variant instead of any enums?
+- [ ] rename Eval / Runtime

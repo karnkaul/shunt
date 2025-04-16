@@ -1,6 +1,6 @@
 #pragma once
-#include <eval.hpp>
 #include <klib/visitor.hpp>
+#include <shunt/call_table.hpp>
 #include <shunt/result.hpp>
 #include <shunt/token.hpp>
 #include <cassert>
@@ -9,9 +9,9 @@
 #include <vector>
 
 namespace shunt {
-class Runtime {
+class Evaluator {
   public:
-	explicit Runtime(Eval const& eval) : m_eval(&eval) {}
+	explicit Evaluator(CallTable const& call_table) : m_call_table(&call_table) {}
 
 	[[nodiscard]] auto evaluate(std::span<Token const> rpn_stack) -> Result<Operand> {
 		m_operands.clear();
@@ -37,41 +37,30 @@ class Runtime {
 					.loc = m_current.loc,
 				};
 			},
-			[this](BinaryOp const op) { apply_bin_op(op); },
+			[this](Binop const op) { apply_bin_op(op); },
 			[this](Operand const op) { m_operands.push_back(op); },
 			[this](Call const call) { apply_call(call); },
 		};
 		std::visit(visitor, m_current.type);
 	}
 
-	void apply_bin_op(BinaryOp const op) {
+	void apply_bin_op(Binop const op) {
 		auto const operands = pop_operands<2>();
-		auto const args = BinOpArgs{
-			.op = op,
-			.a = operands[1],
-			.b = operands[0],
-		};
-		auto result = double{};
-		m_eval->evaluate(args, result);
-		m_operands.push_back(result);
+		m_operands.push_back(op.evaluate(operands[1], operands[0]));
 	}
 
 	void apply_call(Call const call) {
 		auto const token = m_current;
-		auto const operand = pop_operands<1>();
-		auto const args = CallArgs{
-			.call = call,
-			.x = operand[0],
-		};
-		auto result = double{};
-		if (!m_eval->evaluate(args, result)) {
+		auto const operands = pop_operands<1>();
+		auto* func = find_func(*m_call_table, call);
+		if (func == nullptr) {
 			throw SyntaxError{
 				.description = "Unrecognized call",
 				.lexeme = token.lexeme,
 				.loc = token.loc,
 			};
 		}
-		m_operands.push_back(result);
+		m_operands.push_back(func(operands[0]));
 	}
 
 	template <std::size_t Count>
@@ -91,19 +80,7 @@ class Runtime {
 		return ret;
 	}
 
-	[[nodiscard]] static auto compute(Operand const lhs, BinaryOp const op, Operand const rhs)
-		-> Operand {
-		switch (op) {
-		case BinaryOp::Caret: return std::pow(lhs, rhs);
-		case BinaryOp::Plus: return lhs + rhs;
-		case BinaryOp::Minus: return lhs - rhs;
-		case BinaryOp::Star: return lhs * rhs;
-		case BinaryOp::Slash: return lhs / rhs;
-		default: return 0.0;
-		}
-	}
-
-	Eval const* m_eval{};
+	CallTable const* m_call_table{};
 	std::vector<Operand> m_operands{};
 	Token m_current{};
 };

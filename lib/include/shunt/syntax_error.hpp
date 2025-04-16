@@ -4,7 +4,7 @@
 
 namespace shunt {
 struct SyntaxError {
-	[[nodiscard]] auto format(std::string_view input) const -> std::string;
+	[[nodiscard]] auto format(std::string_view line) const -> std::string;
 
 	std::string_view description{};
 	std::string_view lexeme{};

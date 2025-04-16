@@ -1,5 +1,5 @@
+#include <evaluator.hpp>
 #include <parser.hpp>
-#include <runtime.hpp>
 #include <scanner.hpp>
 #include <shunt/shunt.hpp>
 
@@ -11,7 +11,9 @@ auto shunt::parse_to_rpn(std::span<Token const> tokens) -> Result<std::vector<To
 	return Parser{}.parse(tokens);
 }
 
-auto shunt::evaluate(std::span<Token const> rpn_stack) -> Result<double> {
-	auto eval = Eval{};
-	return Runtime{eval}.evaluate(rpn_stack);
+auto shunt::evaluate(std::span<Token const> rpn_stack, CallTable const* call_table)
+	-> Result<double> {
+	static auto const s_call_table = default_call_table();
+	if (call_table == nullptr) { call_table = &s_call_table; }
+	return Evaluator{*call_table}.evaluate(rpn_stack);
 }
