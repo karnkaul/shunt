@@ -36,7 +36,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: init
-        run: uname -m; sudo apt install -yqq ninja-build
+        run: |
+            uname -m
+            sudo apt update -yqq && sudo apt install -yqq clang-19 ninja-build
+            sudo update-alternatives --remove-all clang++
+            sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 10
       - name: configure
         run: cmake -S . --preset=ninja-clang -B build
       - name: build debug
@@ -68,7 +72,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: init
-        run: uname -m
+        run: |
+            uname -m
+            sudo apt update -yqq && sudo apt install -yqq clang-19 ninja-build
+            sudo update-alternatives --remove-all clang++
+            sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 10
       - name: configure
         run: cmake -S . --preset=ninja-clang -B build
       - name: build debug
