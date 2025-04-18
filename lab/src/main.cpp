@@ -15,7 +15,7 @@ auto main() -> int {
 			std::println(stderr, "{}", rpn.error().format(line));
 			return EXIT_FAILURE;
 		}
-		for (auto const& token : rpn.value()) { std::print("{} ", to_string(token.term)); }
+		for (auto const& token : rpn.value()) { std::print("{} ", to_string(token.type)); }
 		std::println();
 
 		auto const value = shunt::evaluate(rpn.value());

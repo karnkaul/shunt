@@ -1,19 +1,20 @@
 #pragma once
-#include <eval.hpp>
+#include <klib/visitor.hpp>
+#include <shunt/call_table.hpp>
 #include <shunt/result.hpp>
 #include <shunt/token.hpp>
-#include <shunt/visitor.hpp>
 #include <cassert>
 #include <cmath>
 #include <span>
 #include <vector>
 
 namespace shunt {
-class Runtime {
+class Evaluator {
   public:
-	explicit Runtime(Eval const& eval) : m_eval(&eval) {}
+	explicit Evaluator(CallTable const& call_table, std::vector<Operand>& operands)
+		: m_call_table(call_table), m_operands(operands) {}
 
-	[[nodiscard]] auto evaluate(std::span<RpnToken const> rpn_stack) -> Result<Operand> {
+	[[nodiscard]] auto evaluate(std::span<Token const> rpn_stack) -> Result<Operand> {
 		m_operands.clear();
 		m_current = {};
 
@@ -29,42 +30,38 @@ class Runtime {
 
   private:
 	void eval_current() {
-		auto const visitor = Visitor{
-			[this](BinaryOp const op) { apply_bin_op(op); },
+		auto const visitor = klib::Visitor{
+			[this](Paren const /*paren*/) {
+				throw SyntaxError{
+					.description = "Unexpected parenthesis",
+					.lexeme = m_current.lexeme,
+					.loc = m_current.loc,
+				};
+			},
+			[this](Operator const op) { apply_operator(op); },
 			[this](Operand const op) { m_operands.push_back(op); },
 			[this](Call const call) { apply_call(call); },
 		};
-		std::visit(visitor, m_current.term);
+		std::visit(visitor, m_current.type);
 	}
 
-	void apply_bin_op(BinaryOp const op) {
+	void apply_operator(Operator const op) {
 		auto const operands = pop_operands<2>();
-		auto const args = BinOpArgs{
-			.op = op,
-			.a = operands[0],
-			.b = operands[1],
-		};
-		auto result = double{};
-		m_eval->evaluate(args, result);
-		m_operands.push_back(result);
+		m_operands.push_back(op.evaluate(operands[1], operands[0]));
 	}
 
 	void apply_call(Call const call) {
 		auto const token = m_current;
-		auto const operand = pop_operands<1>();
-		auto const args = CallArgs{
-			.call = call,
-			.x = operand[0],
-		};
-		auto result = double{};
-		if (!m_eval->evaluate(args, result)) {
+		auto const operands = pop_operands<1>();
+		auto* func = find_func(m_call_table, call);
+		if (func == nullptr) {
 			throw SyntaxError{
 				.description = "Unrecognized call",
 				.lexeme = token.lexeme,
 				.loc = token.loc,
 			};
 		}
-		m_operands.push_back(result);
+		m_operands.push_back(func(operands[0]));
 	}
 
 	template <std::size_t Count>
@@ -84,20 +81,8 @@ class Runtime {
 		return ret;
 	}
 
-	[[nodiscard]] static auto compute(Operand const lhs, BinaryOp const op, Operand const rhs)
-		-> Operand {
-		switch (op) {
-		case BinaryOp::Caret: return std::pow(lhs, rhs);
-		case BinaryOp::Plus: return lhs + rhs;
-		case BinaryOp::Minus: return lhs - rhs;
-		case BinaryOp::Star: return lhs * rhs;
-		case BinaryOp::Slash: return lhs / rhs;
-		default: return 0.0;
-		}
-	}
-
-	Eval const* m_eval{};
-	std::vector<Operand> m_operands{};
-	RpnToken m_current{};
+	CallTable const& m_call_table;
+	std::vector<Operand>& m_operands;
+	Token m_current{};
 };
 } // namespace shunt

@@ -2,7 +2,7 @@
 #include <format>
 
 namespace shunt {
-auto SyntaxError::format(std::string_view const input) const -> std::string {
+auto SyntaxError::format(std::string_view const line) const -> std::string {
 	auto ret = std::string{};
 	if (description.empty()) {
 		ret.append("Unknown error");
@@ -11,8 +11,8 @@ auto SyntaxError::format(std::string_view const input) const -> std::string {
 	}
 	if (lexeme.empty()) { return ret; }
 	std::format_to(std::back_inserter(ret), ": '{}' (col {})", lexeme, loc.start + 1);
-	if (input.empty() || loc.length == 0) { return ret; }
-	std::format_to(std::back_inserter(ret), "\n  {}\n", input);
+	if (line.empty() || loc.length == 0) { return ret; }
+	std::format_to(std::back_inserter(ret), "\n  {}\n", line);
 	ret.resize(ret.size() + 2 + loc.start, ' ');
 	ret.resize(ret.size() + loc.length, '^');
 	return ret;

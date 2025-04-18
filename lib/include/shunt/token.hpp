@@ -1,15 +1,39 @@
 #pragma once
+#include <shunt/call.hpp>
 #include <shunt/loc.hpp>
-#include <shunt/term.hpp>
+#include <shunt/operator.hpp>
+#include <variant>
 
 namespace shunt {
-template <typename TermT>
-struct BasicToken {
-	TermT term{};
+using Operand = double;
+
+enum class Paren : std::int8_t {
+	Left,
+	Right,
+};
+
+struct Token {
+	using Type = std::variant<Paren, Operator, Call, Operand>;
+
+	template <typename T>
+	[[nodiscard]] constexpr auto is() const -> bool {
+		return std::holds_alternative<T>(type);
+	}
+
+	template <typename T>
+	[[nodiscard]] constexpr auto get_if() const -> T const* {
+		return std::get_if<T>(&type);
+	}
+
+	template <typename T>
+	[[nodiscard]] constexpr auto get() const -> T const& {
+		return std::get<T>(type);
+	}
+
+	Type type{};
 	std::string_view lexeme{};
 	Loc loc{};
 };
 
-using Token = BasicToken<Term>;
-using RpnToken = BasicToken<RpnTerm>;
+[[nodiscard]] auto to_string(Token::Type const& token_type) -> std::string;
 } // namespace shunt

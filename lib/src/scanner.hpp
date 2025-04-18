@@ -8,16 +8,18 @@
 namespace shunt {
 class Scanner {
   public:
-	[[nodiscard]] auto scan(std::string_view line) -> Result<std::vector<Token>> {
+	explicit Scanner(std::vector<Token>& out) : m_out(out) {}
+
+	[[nodiscard]] auto scan(std::string_view line) -> Result<void> {
+		m_out.clear();
 		m_remain = line;
 		m_index = 0;
 
-		auto ret = std::vector<Token>{};
 		try {
-			for (auto token = Token{}; next(token);) { ret.push_back(token); }
+			for (auto token = Token{}; next(token);) { m_out.push_back(token); }
 		} catch (SyntaxError const& error) { return std::unexpected(error); }
 		m_remain = {};
-		return ret;
+		return {};
 	}
 
   private:
@@ -37,10 +39,6 @@ class Scanner {
 		return c == '(' || c == ')';
 	}
 
-	[[nodiscard]] static constexpr auto is_sign(char const c) -> bool {
-		return c == '-' || c == '+';
-	}
-
 	[[nodiscard]] auto next(Token& out) -> bool {
 		trim_front();
 		if (m_remain.empty()) { return false; }
@@ -53,28 +51,16 @@ class Scanner {
 	[[nodiscard]] auto next_token() -> Token {
 		assert(!m_remain.empty());
 		char const ch = m_remain.front();
-		if (is_sign(ch)) {
-			auto ret = Token{};
-			if (try_scan_signed(ret)) { return ret; }
-		}
 		if (is_paren(ch)) { return scan_paren(); }
 		if (is_alpha(ch)) { return scan_function(); }
 		if (is_digit(ch)) { return scan_number(); }
 		return scan_operator();
 	}
 
-	[[nodiscard]] auto try_scan_signed(Token& out) -> bool {
-		if (m_remain.size() < 2) { return false; }
-		auto const next = m_remain.at(1);
-		if (!is_digit(next)) { return false; }
-		out = scan_number();
-		return true;
-	}
-
 	[[nodiscard]] auto scan_paren() -> Token {
 		auto const ch = m_remain.front();
 		auto const ret = Token{
-			.term = (ch == '(') ? Paren::Left : Paren::Right,
+			.type = (ch == '(') ? Paren::Left : Paren::Right,
 			.lexeme = m_remain.substr(0, 1),
 			.loc = {.start = m_index, .length = 1},
 		};
@@ -94,7 +80,7 @@ class Scanner {
 		auto const start = m_index;
 		m_index += last;
 		return Token{
-			.term = func_name,
+			.type = func_name,
 			.lexeme = func_name,
 			.loc = {.start = start, .length = last},
 		};
@@ -112,7 +98,7 @@ class Scanner {
 			};
 		}
 		auto const distance = std::size_t(std::distance(m_remain.data(), ptr));
-		auto ret = Token{.term = value, .lexeme = m_remain.substr(0, distance)};
+		auto ret = Token{.type = value, .lexeme = m_remain.substr(0, distance)};
 		ret.loc = {.start = m_index, .length = distance};
 		m_remain = m_remain.substr(distance);
 		m_index += distance;
@@ -120,10 +106,10 @@ class Scanner {
 	}
 
 	[[nodiscard]] auto scan_operator() -> Token {
-		for (auto const op : enumerate<BinaryOp>()) {
-			auto const symbol = bin_op_symbol_v.at(op);
+		for (auto const op : operators_v) {
+			auto const symbol = op.symbol();
 			if (m_remain.starts_with(symbol)) {
-				auto ret = Token{.term = op, .lexeme = m_remain.substr(0, symbol.size())};
+				auto ret = Token{.type = op, .lexeme = m_remain.substr(0, symbol.size())};
 				ret.loc = {.start = m_index, .length = symbol.size()};
 				m_remain = m_remain.substr(symbol.size());
 				m_index += symbol.size();
@@ -144,6 +130,8 @@ class Scanner {
 			++m_index;
 		}
 	}
+
+	std::vector<Token>& m_out;
 
 	std::string_view m_remain{};
 	std::size_t m_index{};
