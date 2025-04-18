@@ -42,6 +42,7 @@ class Parser {
 			}
 			m_current.type = -*operand;
 			m_output.push_back(m_current);
+			m_negate_operand = false;
 			return;
 		}
 
