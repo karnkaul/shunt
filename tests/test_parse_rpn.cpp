@@ -9,8 +9,8 @@ namespace {
 using namespace shunt;
 
 struct Fixture {
-	void parse_all(std::span<Token const> tokens) {
-		for (auto const token : tokens) {
+	void parse_all(std::span<Token const> tokens_) {
+		for (auto const token : tokens_) {
 			auto result = parser.parse_next(token);
 			ASSERT(result);
 		}
