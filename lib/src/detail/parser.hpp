@@ -34,7 +34,7 @@ class Parser {
 				};
 			}
 			m_current.type = -*operand;
-			m_sink.on_output(m_current);
+			m_sink.on_operand(m_current);
 			m_negate_operand = false;
 			return;
 		}
@@ -42,7 +42,7 @@ class Parser {
 		auto const visitor = klib::Visitor{
 			[this](Eof) {
 				drain_stack();
-				m_sink.on_output(m_current);
+				m_sink.on_eof(m_current);
 			},
 			[this](Paren const paren) {
 				switch (paren) {
@@ -53,7 +53,7 @@ class Parser {
 			},
 			[this](Operator const op) { apply_operator(op); },
 			[this](Call) { m_stack.push_back(m_current); },
-			[this](Operand) { m_sink.on_output(m_current); },
+			[this](Operand) { m_sink.on_operand(m_current); },
 		};
 		std::visit(visitor, m_current.type);
 	}
@@ -63,8 +63,13 @@ class Parser {
 			auto const token = m_stack.back();
 			m_stack.pop_back();
 
-			if (token.is<Operator>() || token.is<Call>()) {
-				m_sink.on_output(token);
+			if (token.is<Call>()) {
+				m_sink.on_call(token);
+				continue;
+			}
+
+			if (token.is<Operator>()) {
+				m_sink.on_operator(token);
 				continue;
 			}
 
@@ -81,12 +86,14 @@ class Parser {
 		while (!m_stack.empty()) {
 			auto const token = m_stack.back();
 			m_stack.pop_back();
-			if (auto const* paren = token.get_if<Paren>();
-				paren != nullptr && *paren == Paren::Left) {
-				pop_if_func();
+			if (token.is<Paren>()) {
+				assert(token.get<Paren>() == Paren::Left);
+				pop_if_call();
 				return;
 			}
-			m_sink.on_output(token);
+			if (token.is<Call>()) { m_sink.on_call(token); }
+			assert(token.is<Operator>());
+			m_sink.on_operator(token);
 		}
 
 		throw SyntaxError{
@@ -96,16 +103,23 @@ class Parser {
 		};
 	}
 
-	void pop_if_func() {
+	void pop_if_call() {
 		if (m_stack.empty()) { return; }
 		auto const token = m_stack.back();
 		if (!token.is<Call>()) { return; }
 		m_stack.pop_back();
-		m_sink.on_output(token);
+		m_sink.on_call(token);
+	}
+
+	[[nodiscard]] auto can_unary_minus() const -> bool {
+		if (!m_previous) { return true; }
+		if (m_previous->is<Operator>()) { return true; }
+		if (auto const* paren = m_previous->get_if<Paren>()) { return *paren == Paren::Left; }
+		return false;
 	}
 
 	void apply_operator(Operator const op) {
-		if ((!m_previous || !m_previous->is<Operand>()) && op.type() == Operator::Type::Minus) {
+		if (op.type() == Operator::Type::Minus && can_unary_minus()) {
 			m_negate_operand = true;
 			return;
 		}
@@ -113,15 +127,17 @@ class Parser {
 		auto const p_current = op.precedence();
 		while (!m_stack.empty()) {
 			auto const token = m_stack.back();
-			if (auto const* paren = token.get_if<Paren>();
-				paren != nullptr && *paren == Paren::Left) {
+			if (token.is<Paren>()) {
+				assert(token.get<Paren>() == Paren::Left);
 				break;
 			}
-			if (auto const* bin_op = token.get_if<Operator>()) {
-				auto const p_stack = bin_op->precedence();
+			if (token.is<Call>()) {
+				m_sink.on_call(m_current);
+			} else {
+				auto const p_stack = token.get<Operator>().precedence();
 				if (p_current > p_stack) { break; }
+				m_sink.on_operator(token);
 			}
-			m_sink.on_output(token);
 			m_stack.pop_back();
 		}
 		m_stack.push_back(m_current);

@@ -100,9 +100,9 @@ class Parser {
 		while (!m_stack.empty()) {
 			auto const token = m_stack.back();
 			m_stack.pop_back();
-			if (auto const* paren = token.get_if<Paren>();
-				paren != nullptr && *paren == Paren::Left) {
-				pop_if_func();
+			if (token.is<Paren>()) {
+				assert(token.get<Paren>() == Paren::Left);
+				pop_if_call();
 				return;
 			}
 			m_output.push_back(token);
@@ -115,7 +115,7 @@ class Parser {
 		};
 	}
 
-	void pop_if_func() {
+	void pop_if_call() {
 		if (m_stack.empty()) { return; }
 		auto const token = m_stack.back();
 		if (!token.is<Call>()) { return; }
@@ -123,8 +123,15 @@ class Parser {
 		m_output.push_back(token);
 	}
 
+	[[nodiscard]] auto can_unary_minus() const -> bool {
+		if (!m_previous) { return true; }
+		if (m_previous->is<Operator>()) { return true; }
+		if (auto const* paren = m_previous->get_if<Paren>()) { return *paren == Paren::Left; }
+		return false;
+	}
+
 	void apply_operator(Operator const op) {
-		if ((!m_previous || !m_previous->is<Operand>()) && op.type() == Operator::Type::Minus) {
+		if (op.type() == Operator::Type::Minus && can_unary_minus()) {
 			m_negate_operand = true;
 			return;
 		}
@@ -132,8 +139,8 @@ class Parser {
 		auto const p_current = op.precedence();
 		while (!m_stack.empty()) {
 			auto const token = m_stack.back();
-			if (auto const* paren = token.get_if<Paren>();
-				paren != nullptr && *paren == Paren::Left) {
+			if (token.is<Paren>()) {
+				assert(token.get<Paren>() == Paren::Left);
 				break;
 			}
 			if (auto const* bin_op = token.get_if<Operator>()) {

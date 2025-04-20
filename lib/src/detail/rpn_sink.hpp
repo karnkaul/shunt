@@ -3,9 +3,16 @@
 #include <vector>
 
 namespace shunt::detail {
-struct RpnSink : ITokenSink {
-	void on_output(Token const& token) final { tokens.push_back(token); }
+class RpnSink : public ITokenSink {
+  public:
+	explicit RpnSink(std::vector<Token>& tokens) : m_tokens(tokens) {}
 
-	std::vector<Token> tokens{};
+	void on_operator(Token const& token) final { m_tokens.push_back(token); }
+	void on_operand(Token const& token) final { m_tokens.push_back(token); }
+	void on_call(Token const& token) final { m_tokens.push_back(token); }
+	void on_eof(Token const& token) final { m_tokens.push_back(token); }
+
+  private:
+	std::vector<Token>& m_tokens;
 };
 } // namespace shunt::detail
