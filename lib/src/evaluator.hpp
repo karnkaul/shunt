@@ -31,6 +31,7 @@ class Evaluator {
   private:
 	void eval_current() {
 		auto const visitor = klib::Visitor{
+			[](Eof) {},
 			[this](Paren const /*paren*/) {
 				throw SyntaxError{
 					.description = "Unexpected parenthesis",

@@ -1,13 +1,17 @@
+#include <detail/tokenizer.hpp>
 #include <evaluator.hpp>
 #include <parser.hpp>
-#include <scanner.hpp>
 #include <shunt/shunt.hpp>
 
 auto shunt::scan_tokens(std::string_view const line) -> Result<std::vector<Token>> {
 	auto ret = std::vector<Token>{};
-	auto const result = Scanner{ret}.scan(line);
-	if (!result) { return std::unexpected(result.error()); }
-	return ret;
+	auto tokenizer = detail::Tokenizer{line};
+	while (true) {
+		auto const token = tokenizer.scan_next();
+		if (!token) { return std::unexpected(token.error()); }
+		ret.push_back(*token);
+		if (token->is<Eof>()) { return ret; }
+	}
 }
 
 auto shunt::parse_to_rpn(std::span<Token const> tokens) -> Result<std::vector<Token>> {

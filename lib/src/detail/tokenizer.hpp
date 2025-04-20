@@ -3,23 +3,16 @@
 #include <shunt/token.hpp>
 #include <cassert>
 #include <charconv>
-#include <vector>
 
-namespace shunt {
-class Scanner {
+namespace shunt::detail {
+class Tokenizer {
   public:
-	explicit Scanner(std::vector<Token>& out) : m_out(out) {}
+	explicit Tokenizer(std::string_view line) : m_remain(line) {}
 
-	[[nodiscard]] auto scan(std::string_view line) -> Result<void> {
-		m_out.clear();
-		m_remain = line;
-		m_index = 0;
-
-		try {
-			for (auto token = Token{}; next(token);) { m_out.push_back(token); }
-		} catch (SyntaxError const& error) { return std::unexpected(error); }
-		m_remain = {};
-		return {};
+	[[nodiscard]] auto scan_next() -> Result<Token> {
+		trim_front();
+		if (m_remain.empty()) { return eof(); }
+		return next_token();
 	}
 
   private:
@@ -39,16 +32,11 @@ class Scanner {
 		return c == '(' || c == ')';
 	}
 
-	[[nodiscard]] auto next(Token& out) -> bool {
-		trim_front();
-		if (m_remain.empty()) { return false; }
-		out = next_token();
-		return true;
+	[[nodiscard]] auto eof() const -> Token {
+		return Token{.type = Eof{}, .loc = {.start = m_index}};
 	}
 
-	[[nodiscard]] auto peek() const -> char { return m_remain.empty() ? '\0' : m_remain.front(); }
-
-	[[nodiscard]] auto next_token() -> Token {
+	[[nodiscard]] auto next_token() -> Result<Token> {
 		assert(!m_remain.empty());
 		char const ch = m_remain.front();
 		if (is_paren(ch)) { return scan_paren(); }
@@ -86,16 +74,16 @@ class Scanner {
 		};
 	}
 
-	[[nodiscard]] auto scan_number() -> Token {
+	[[nodiscard]] auto scan_number() -> Result<Token> {
 		auto value = double{};
 		auto const [ptr, ec] =
 			std::from_chars(m_remain.data(), m_remain.data() + m_remain.size(), value);
 		if (ec != std::errc{}) {
-			throw SyntaxError{
+			return std::unexpected(SyntaxError{
 				.description = "Invalid number",
 				.lexeme = m_remain.substr(0, 1),
 				.loc = {.start = m_index, .length = 1},
-			};
+			});
 		}
 		auto const distance = std::size_t(std::distance(m_remain.data(), ptr));
 		auto ret = Token{.type = value, .lexeme = m_remain.substr(0, distance)};
@@ -105,7 +93,7 @@ class Scanner {
 		return ret;
 	}
 
-	[[nodiscard]] auto scan_operator() -> Token {
+	[[nodiscard]] auto scan_operator() -> Result<Token> {
 		for (auto const op : operators_v) {
 			auto const symbol = op.symbol();
 			if (m_remain.starts_with(symbol)) {
@@ -117,11 +105,11 @@ class Scanner {
 			}
 		}
 
-		throw SyntaxError{
+		return std::unexpected(SyntaxError{
 			.description = "Unrecognized operator",
 			.lexeme = m_remain.substr(0, 1),
 			.loc = {.start = m_index, .length = 1},
-		};
+		});
 	}
 
 	void trim_front() {
@@ -131,9 +119,7 @@ class Scanner {
 		}
 	}
 
-	std::vector<Token>& m_out;
-
 	std::string_view m_remain{};
 	std::size_t m_index{};
 };
-} // namespace shunt
+} // namespace shunt::detail

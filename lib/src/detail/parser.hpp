@@ -1,38 +1,16 @@
 #pragma once
+#include <detail/token_sink.hpp>
 #include <klib/visitor.hpp>
 #include <shunt/result.hpp>
-#include <shunt/token.hpp>
 #include <cassert>
 #include <optional>
-#include <span>
 #include <vector>
 
-namespace shunt {
+namespace shunt::detail {
 class Parser {
   public:
-	explicit Parser(std::vector<Token>& out, std::vector<Token>& stack)
-		: m_stack(stack), m_output(out) {}
-
-	[[nodiscard]] auto parse(std::span<Token const> tokens) -> Result<void> {
+	explicit Parser(std::vector<Token>& stack, ITokenSink& sink) : m_stack(stack), m_sink(sink) {
 		m_stack.clear();
-		m_output.clear();
-		m_current = {};
-
-		try {
-			for (auto const token : tokens) {
-				m_current = token;
-				parse_current();
-				m_previous = m_current;
-			}
-			if (!m_stack.empty()) {
-				throw SyntaxError{
-					.description = "Unexpected token",
-					.lexeme = m_stack.front().lexeme,
-					.loc = m_stack.front().loc,
-				};
-			}
-		} catch (SyntaxError const& error) { return std::unexpected(error); }
-		return {};
 	}
 
 	[[nodiscard]] auto parse_next(Token const& token) -> Result<void> {
@@ -56,13 +34,16 @@ class Parser {
 				};
 			}
 			m_current.type = -*operand;
-			m_output.push_back(m_current);
+			m_sink.on_output(m_current);
 			m_negate_operand = false;
 			return;
 		}
 
 		auto const visitor = klib::Visitor{
-			[this](Eof) { drain_stack(); },
+			[this](Eof) {
+				drain_stack();
+				m_sink.on_output(m_current);
+			},
 			[this](Paren const paren) {
 				switch (paren) {
 				case Paren::Left: m_stack.push_back(m_current); break;
@@ -72,7 +53,7 @@ class Parser {
 			},
 			[this](Operator const op) { apply_operator(op); },
 			[this](Call) { m_stack.push_back(m_current); },
-			[this](Operand) { m_output.push_back(m_current); },
+			[this](Operand) { m_sink.on_output(m_current); },
 		};
 		std::visit(visitor, m_current.type);
 	}
@@ -83,7 +64,7 @@ class Parser {
 			m_stack.pop_back();
 
 			if (token.is<Operator>() || token.is<Call>()) {
-				m_output.push_back(token);
+				m_sink.on_output(token);
 				continue;
 			}
 
@@ -105,7 +86,7 @@ class Parser {
 				pop_if_func();
 				return;
 			}
-			m_output.push_back(token);
+			m_sink.on_output(token);
 		}
 
 		throw SyntaxError{
@@ -120,7 +101,7 @@ class Parser {
 		auto const token = m_stack.back();
 		if (!token.is<Call>()) { return; }
 		m_stack.pop_back();
-		m_output.push_back(token);
+		m_sink.on_output(token);
 	}
 
 	void apply_operator(Operator const op) {
@@ -140,17 +121,17 @@ class Parser {
 				auto const p_stack = bin_op->precedence();
 				if (p_current > p_stack) { break; }
 			}
-			m_output.push_back(token);
+			m_sink.on_output(token);
 			m_stack.pop_back();
 		}
 		m_stack.push_back(m_current);
 	}
 
 	std::vector<Token>& m_stack;
-	std::vector<Token>& m_output;
+	ITokenSink& m_sink;
 
 	Token m_current{};
 	std::optional<Token> m_previous{};
 	bool m_negate_operand{};
 };
-} // namespace shunt
+} // namespace shunt::detail

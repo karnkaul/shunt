@@ -1,6 +1,6 @@
+#include <detail/tokenizer.hpp>
 #include <evaluator.hpp>
 #include <parser.hpp>
-#include <scanner.hpp>
 #include <shunt/interpreter.hpp>
 #include <cassert>
 
@@ -14,21 +14,41 @@ void Interpreter::set_call_table(CallTable const* call_table) {
 }
 
 auto Interpreter::scan_to_infix(std::string_view const line) -> Result<Infix> {
-	auto const result = Scanner{m_output}.scan(line);
-	if (!result) { return std::unexpected(result.error()); }
-	return Infix{.tokens = std::move(m_output)};
+	m_output.clear();
+	auto tokenizer = detail::Tokenizer{line};
+	while (true) {
+		auto const token = tokenizer.scan_next();
+		if (!token) { return std::unexpected(token.error()); }
+		m_output.push_back(*token);
+		if (token->is<Eof>()) { return Infix{.tokens = std::move(m_output)}; }
+	}
 }
 
 auto Interpreter::scan_to_postfix(std::string_view const line) -> Result<Postfix> {
-	auto const result = scan_to_infix(line);
-	if (!result) { return std::unexpected(result.error()); }
-	return parse_to_postfix(*result);
+	m_output.clear();
+	auto tokenizer = detail::Tokenizer{line};
+	auto parser = Parser{m_output, m_stack};
+	while (true) {
+		auto const token = tokenizer.scan_next();
+		if (!token) { return std::unexpected(token.error()); }
+		auto const result = parser.parse_next(*token);
+		if (!result) { return std::unexpected(result.error()); }
+		if (token->is<Eof>()) { break; }
+	}
+	return Postfix{.tokens = std::move(m_output)};
 }
 
 auto Interpreter::parse_to_postfix(Infix const& infix) -> Result<Postfix> {
+	if (infix.tokens.empty()) { return {}; }
+	if (!infix.tokens.back().is<Eof>()) {
+		return std::unexpected(SyntaxError{.description = "Invalid expression"});
+	}
+
 	auto parser = Parser{m_output, m_stack};
-	auto const result = parser.parse(infix.tokens);
-	if (!result) { return std::unexpected(result.error()); }
+	for (auto const token : infix.tokens) {
+		auto const result = parser.parse_next(token);
+		if (!result) { return std::unexpected(result.error()); }
+	}
 	return Postfix{.tokens = std::move(m_output)};
 }
 
