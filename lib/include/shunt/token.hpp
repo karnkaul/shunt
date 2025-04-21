@@ -5,6 +5,8 @@
 #include <variant>
 
 namespace shunt {
+struct Eof {};
+
 using Operand = double;
 
 enum class Paren : std::int8_t {
@@ -13,7 +15,7 @@ enum class Paren : std::int8_t {
 };
 
 struct Token {
-	using Type = std::variant<Paren, Operator, Call, Operand>;
+	using Type = std::variant<Eof, Paren, Operator, Call, Operand>;
 
 	template <typename T>
 	[[nodiscard]] constexpr auto is() const -> bool {
