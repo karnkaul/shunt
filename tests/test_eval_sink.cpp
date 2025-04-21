@@ -48,11 +48,5 @@ TEST(eval_sink_call) {
 	auto result = fixture.sink.get_value();
 	ASSERT(result);
 	EXPECT(nearly_eq(*result, 4.0));
-
-	auto err_caught = false;
-	try {
-		fixture.sink.on_call(Token{.type = Call{"foo"}});
-	} catch (SyntaxError const& /*s*/) { err_caught = true; }
-	EXPECT(err_caught);
 }
 } // namespace

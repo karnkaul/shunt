@@ -7,6 +7,8 @@ class RpnSink : public ITokenSink {
   public:
 	explicit RpnSink(std::vector<Token>& output) : m_output(output) { m_output.clear(); }
 
+	[[nodiscard]] auto is_defined(Call /*call*/) const -> bool final { return true; }
+
 	void on_operator(Token const& token) final { m_output.push_back(token); }
 	void on_operand(Token const& token) final { m_output.push_back(token); }
 	void on_call(Token const& token) final { m_output.push_back(token); }

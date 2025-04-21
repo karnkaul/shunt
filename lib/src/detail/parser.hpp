@@ -52,7 +52,7 @@ class Parser {
 				}
 			},
 			[this](Operator const op) { apply_operator(op); },
-			[this](Call) { m_stack.push_back(m_current); },
+			[this](Call const call) { push_if_defined(call); },
 			[this](Operand) { m_sink.on_operand(m_current); },
 		};
 		std::visit(visitor, m_current.type);
@@ -101,6 +101,17 @@ class Parser {
 			.lexeme = m_current.lexeme,
 			.loc = m_current.loc,
 		};
+	}
+
+	void push_if_defined(Call const call) {
+		if (!m_sink.is_defined(call)) {
+			throw SyntaxError{
+				.description = "Unrecognized call",
+				.lexeme = m_current.lexeme,
+				.loc = m_current.loc,
+			};
+		}
+		m_stack.push_back(m_current);
 	}
 
 	void pop_if_call() {

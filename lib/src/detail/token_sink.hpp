@@ -4,6 +4,7 @@
 
 namespace shunt::detail {
 struct ITokenSink : klib::Polymorphic {
+	[[nodiscard]] virtual auto is_defined(Call call) const -> bool = 0;
 	virtual void on_operator(Token const& token) = 0;
 	virtual void on_operand(Token const& token) = 0;
 	virtual void on_call(Token const& token) = 0;

@@ -21,6 +21,10 @@ class EvalSink : public ITokenSink {
 		return m_operands.front();
 	}
 
+	[[nodiscard]] auto is_defined(Call call) const -> bool final {
+		return find_func(m_call_table, call) != nullptr;
+	}
+
 	void on_operator(Token const& token) final {
 		auto const& op = token.get<Operator>();
 		auto const operands = pop_operands<2>(token);
@@ -31,13 +35,7 @@ class EvalSink : public ITokenSink {
 
 	void on_call(Token const& token) final {
 		auto* func = find_func(m_call_table, token.get<Call>());
-		if (func == nullptr) {
-			throw SyntaxError{
-				.description = "Unrecognized call",
-				.lexeme = token.lexeme,
-				.loc = token.loc,
-			};
-		}
+		assert(func);
 		auto const operands = pop_operands<1>(token);
 		m_operands.push_back(func(operands[0]));
 	}
