@@ -46,7 +46,7 @@ auto App::evaluate_line() -> bool {
 }
 
 auto App::eval_verbose() -> bool {
-	auto const infix = m_interpreter.scan_to_infix(m_line);
+	auto const infix = m_interpreter.tokenize_to_infix(m_line);
 	if (!infix) {
 		print_error(infix.error());
 		return false;

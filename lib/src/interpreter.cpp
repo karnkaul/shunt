@@ -4,6 +4,8 @@
 #include <detail/tokenizer.hpp>
 #include <shunt/interpreter.hpp>
 #include <cassert>
+#include <optional>
+#include <span>
 
 namespace shunt {
 namespace {
@@ -20,27 +22,42 @@ template <typename F>
 		if (token->is<Eof>()) { return {}; }
 	}
 }
+
+[[nodiscard]] auto pre_eval(std::span<Token const> tokens) -> std::optional<Result<double>> {
+	if (tokens.empty()) { return Result<double>{}; }
+	if (!tokens.back().is<Eof>()) {
+		return std::unexpected(SyntaxError{.description = "Invalid expression"});
+	}
+	return std::nullopt;
+}
+
+[[nodiscard]] auto get_top(std::span<Operand const> operands) -> Result<double> {
+	if (operands.size() != 1) {
+		return std::unexpected(SyntaxError{.description = "Invalid expression"});
+	}
+	return operands.front();
+}
 } // namespace
 
 void Interpreter::set_call_table(CallTable const* call_table) {
 	m_call_table = call_table != nullptr ? call_table : &g_call_table;
 }
 
-auto Interpreter::scan_to_infix(std::string_view const line) -> Result<Infix> {
+auto Interpreter::tokenize_to_infix(std::string_view const line) -> Result<Infix> {
 	if (line.empty()) { return {}; }
-	m_output.clear();
+	m_postfix.clear();
 	auto const per_token = [this](Token const& token) {
-		m_output.push_back(token);
+		m_postfix.push_back(token);
 		return Result<void>{};
 	};
 	auto const result = tokenize(line, per_token);
 	if (!result) { return std::unexpected(result.error()); }
-	return Infix{.tokens = std::move(m_output)};
+	return Infix{.tokens = std::move(m_postfix)};
 }
 
-auto Interpreter::scan_to_postfix(std::string_view const line) -> Result<Postfix> {
+auto Interpreter::parse_to_postfix(std::string_view const line) -> Result<Postfix> {
 	if (line.empty()) { return {}; }
-	auto sink = detail::RpnSink{m_output};
+	auto sink = detail::RpnSink{m_postfix};
 	auto parser = detail::Parser{m_stack, sink};
 	auto const per_token = [&](Token const& token) -> Result<void> {
 		auto const result = parser.parse_next(token);
@@ -49,7 +66,7 @@ auto Interpreter::scan_to_postfix(std::string_view const line) -> Result<Postfix
 	};
 	auto const result = tokenize(line, per_token);
 	if (!result) { return std::unexpected(result.error()); }
-	return Postfix{.tokens = std::move(m_output)};
+	return Postfix{.tokens = std::move(m_postfix)};
 }
 
 auto Interpreter::parse_to_postfix(Infix const& infix) -> Result<Postfix> {
@@ -57,17 +74,48 @@ auto Interpreter::parse_to_postfix(Infix const& infix) -> Result<Postfix> {
 	if (!infix.tokens.back().is<Eof>()) {
 		return std::unexpected(SyntaxError{.description = "Invalid expression"});
 	}
-	auto sink = detail::RpnSink{m_output};
+	auto sink = detail::RpnSink{m_postfix};
 	auto parser = detail::Parser{m_stack, sink};
 	for (auto const token : infix.tokens) {
 		auto const result = parser.parse_next(token);
 		if (!result) { return std::unexpected(result.error()); }
 	}
-	return Postfix{.tokens = std::move(m_output)};
+	return Postfix{.tokens = std::move(m_postfix)};
+}
+
+auto Interpreter::evaluate(std::string_view const line) -> Result<double> {
+	assert(m_call_table);
+	if (line.empty()) { return {}; }
+
+	auto sink = detail::EvalSink{*m_call_table, m_operands};
+	auto parser = detail::Parser{m_stack, sink};
+
+	auto const per_token = [&](Token const& token) -> Result<void> {
+		auto const result = parser.parse_next(token);
+		if (!result) { return std::unexpected(result.error()); }
+		return {};
+	};
+	auto const result = tokenize(line, per_token);
+	if (!result) { return std::unexpected(result.error()); }
+
+	return get_top(m_operands);
+}
+
+auto Interpreter::evaluate(Infix const& infix) -> Result<double> {
+	if (auto const result = pre_eval(infix.tokens)) { return *result; }
+
+	auto sink = detail::EvalSink{*m_call_table, m_operands};
+	auto parser = detail::Parser{m_stack, sink};
+	for (auto const& token : infix.tokens) {
+		auto const result = parser.parse_next(token);
+		if (!result) { return std::unexpected(result.error()); }
+	}
+
+	return get_top(m_operands);
 }
 
 auto Interpreter::evaluate(Postfix const& postfix) -> Result<double> {
-	if (auto const result = pre_evaluate(postfix.tokens)) { return *result; }
+	if (auto const result = pre_eval(postfix.tokens)) { return *result; }
 
 	auto sink = detail::EvalSink{*m_call_table, m_operands};
 	for (auto const& token : postfix.tokens) {
@@ -84,55 +132,6 @@ auto Interpreter::evaluate(Postfix const& postfix) -> Result<double> {
 		}
 	}
 
-	return top_operand();
-}
-
-auto Interpreter::evaluate(Infix const& infix) -> Result<double> {
-	if (auto const result = pre_evaluate(infix.tokens)) { return *result; }
-
-	auto sink = detail::EvalSink{*m_call_table, m_operands};
-	auto parser = detail::Parser{m_stack, sink};
-	for (auto const& token : infix.tokens) {
-		auto const result = parser.parse_next(token);
-		if (!result) { return std::unexpected(result.error()); }
-	}
-
-	return top_operand();
-}
-
-auto Interpreter::evaluate(std::string_view const line) -> Result<double> {
-	assert(m_call_table);
-	if (line.empty()) { return {}; }
-
-	auto tokenizer = detail::Tokenizer{line};
-	auto sink = detail::EvalSink{*m_call_table, m_operands};
-	auto parser = detail::Parser{m_stack, sink};
-
-	auto const per_token = [&](Token const& token) -> Result<void> {
-		auto const result = parser.parse_next(token);
-		if (!result) { return std::unexpected(result.error()); }
-		return {};
-	};
-	auto const result = tokenize(line, per_token);
-	if (!result) { return std::unexpected(result.error()); }
-
-	return top_operand();
-}
-
-auto Interpreter::pre_evaluate(std::span<Token const> tokens) const
-	-> std::optional<Result<double>> {
-	assert(m_call_table);
-	if (tokens.empty()) { return Result<double>{}; }
-	if (!tokens.back().is<Eof>()) {
-		return std::unexpected(SyntaxError{.description = "Invalid expression"});
-	}
-	return std::nullopt;
-}
-
-auto Interpreter::top_operand() const -> Result<double> {
-	if (m_operands.size() != 1) {
-		return std::unexpected(SyntaxError{.description = "Invalid expression"});
-	}
-	return m_operands.front();
+	return get_top(m_operands);
 }
 } // namespace shunt

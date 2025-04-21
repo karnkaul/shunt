@@ -14,7 +14,6 @@ set(shunt_is_top_level ${PROJECT_IS_TOP_LEVEL})
 
 add_subdirectory(ext)
 add_subdirectory(lib)
-add_subdirectory(lab)
 
 if(SHUNT_BUILD_CLI)
   add_subdirectory(cli)
