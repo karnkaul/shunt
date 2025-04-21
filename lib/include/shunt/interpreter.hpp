@@ -2,18 +2,11 @@
 #include <shunt/call_table.hpp>
 #include <shunt/result.hpp>
 #include <shunt/token.hpp>
+#include <optional>
+#include <span>
 #include <vector>
 
 namespace shunt {
-enum class ExprType : std::int8_t { Infix, Postfix };
-
-struct Expr {
-	using Type = ExprType;
-
-	std::vector<Token> tokens{};
-	Type type{};
-};
-
 struct Infix {
 	std::vector<Token> tokens{};
 };
@@ -38,6 +31,10 @@ class Interpreter {
 	[[nodiscard]] auto evaluate(std::string_view line) -> Result<double>;
 
   private:
+	[[nodiscard]] auto pre_evaluate(std::span<Token const> tokens) const
+		-> std::optional<Result<double>>;
+	[[nodiscard]] auto top_operand() const -> Result<double>;
+
 	CallTable const* m_call_table{};
 
 	std::vector<Token> m_output{};
